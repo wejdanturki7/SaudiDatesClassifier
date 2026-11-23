@@ -1,47 +1,42 @@
-# 🌴 Saudi Date Fruit Classifier
+# Saudi Date Fruit Classifier
 
-**Fine-tuning a pretrained ResNet-18 to recognise 9 varieties of Saudi dates from a single photo.**
-
-*Computer Vision for Developers, SDAIA Academy*
-**Team:** Wejdan Alotaibi
+Computer Vision for Developers – SDAIA Academy
+Team: Wejdan Alotaibi
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/wejdanturki7/SaudiDatesClassifier/blob/main/project.ipynb)
 
-> **Result:** test accuracy went from **12.9 %** before training (random guessing for 9 classes is 11.1 %) to **96.8 %** after **1.5 minutes** of fine-tuning on a T4 GPU. Only 8 of the 249 test images were misclassified.
-
 ![Sample images per variety](figures/samples.png)
-
----
 
 ## Project
 
-Saudi Arabia is one of the world's largest date producers, with hundreds of varieties. Telling them apart (for example Ajwa vs. Sokari vs. Medjool) matters for sorting lines, markets, pricing and quality control, and today a trained human usually does it by eye.
+I chose Saudi dates for this project because dates are an important part of Saudi culture and daily life. Saudi Arabia has many different types of dates, and some of them look very similar to each other. I wanted to explore how computer vision can help identify these varieties using images instead of relying only on human observation.
 
-We train an image classifier that takes **one photo of a single date** and predicts its **variety (9 classes)**. The pipeline:
+In this project, I used a pretrained ResNet-18 model and fine-tuned it to classify nine types of Saudi dates. My goal was to see how well the model could learn the visual differences between the varieties, such as colour, shape, and texture.
 
-1. Download the Kaggle dataset, resize every photo once and remove exact duplicates (MD5 hash).
-2. Make a stratified **train / validation / test** split (70 / 15 / 15). The test set is touched only twice.
-3. Evaluate on the test set **before training** (≈ random guessing, 1/9).
-4. Fine-tune a **pretrained ResNet-18** with a new 9-class head (Day 2 technique, Lab 2B).
+Steps in the notebook:
+
+1. Download the dataset from Kaggle, resize the images and check for duplicates.
+2. Split the data into train / validation / test (70 / 15 / 15).
+3. Evaluate the model on the test set before training.
+4. Fine-tune ResNet-18 with a new 9-class output layer.
 5. Plot loss and accuracy per epoch.
-6. Evaluate **after training** on the same test set with the same metrics, then compare.
-7. Analyse the errors with a confusion matrix, a gallery of the mistakes and **Grad-CAM** heat-maps.
-8. **Bonus:** compare against a small CNN trained from scratch (Day 1 technique, Lab 1B).
+6. Evaluate again on the same test set and compare before vs after.
+7. Look at the errors: confusion matrix, misclassified images and Grad-CAM.
+8. Extra: compare with a small CNN trained from scratch.
 
 ## Dataset
 
 | | |
 |---|---|
-| **Name** | Date Fruit Image Dataset in Controlled Environment |
-| **Link** | https://www.kaggle.com/datasets/wadhasnalhamdan/date-fruit-image-dataset-in-controlled-environment |
-| **Authors** | W. Alhamdan & J. M. Howe, City, University of London (2021) |
-| **Content** | Photos of single date fruits taken with a DSLR camera (5184 × 3456 px) in a controlled environment (same background and lighting) |
-| **Task** | Image classification, 9 classes |
-| **Images** | **1,658** (0 exact duplicates, 0 unreadable files) |
+| Name | Date Fruit Image Dataset in Controlled Environment |
+| Link | https://www.kaggle.com/datasets/wadhasnalhamdan/date-fruit-image-dataset-in-controlled-environment |
+| Authors | W. Alhamdan & J. M. Howe (2021) |
+| Images | 1,658 photos of single dates (DSLR, 5184 × 3456 px, same background and lighting) |
+| Classes | 9 |
 
-**Varieties:** Ajwa (عجوة) · Galaxy (جالكسي) · Medjool (مجدول) · Meneifi (منيفي) · Nabtat Ali (نبتة علي) · Rutab (رطب) · Shaishe (شيشي) · Sokari (سكري) · Sugaey (صقعي)
+Varieties: Ajwa (عجوة), Galaxy (جالكسي), Medjool (مجدول), Meneifi (منيفي), Nabtat Ali (نبتة علي), Rutab (رطب), Shaishe (شيشي), Sokari (سكري), Sugaey (صقعي)
 
-**Split per class** (stratified, seed 42):
+Split per class (stratified, seed 42):
 
 | Variety | train | val | test | total |
 |---|---|---|---|---|
@@ -54,33 +49,29 @@ We train an image classifier that takes **one photo of a single date** and predi
 | Shaishe | 120 | 25 | 26 | 171 |
 | Sokari | 185 | 40 | 39 | 264 |
 | Sugaey | 118 | 25 | 25 | 168 |
-| **TOTAL** | **1160** | **249** | **249** | **1658** |
+| TOTAL | 1160 | 249 | 249 | 1658 |
 
 ![Images per variety](figures/class_counts.png)
 
-The classes are a little unbalanced: Sokari has 264 images and Medjool has 135. That's why we report **macro** precision, recall and F1, which give every variety the same weight.
-
-**Preprocessing**
-- Every photo is resized once so its shorter side is 256 px. This makes each epoch fast.
-- Exact duplicates are removed **before** splitting, so the same image can't end up in both train and test.
-- Validation is used to pick the best epoch. Test is used only before and after training.
-- Training augmentation: random resized crop, horizontal and vertical flips, ±20° rotation, and mild brightness/contrast changes. We leave **hue** unchanged because colour is a key clue that separates varieties.
+Notes:
+- No duplicate or broken images were found.
+- The classes are not perfectly balanced (Sokari 264, Medjool 135), so I report macro precision, recall and F1.
+- Images were resized once (shorter side 256 px) to make training faster.
+- Training augmentation: random crop, flips, rotation and small brightness/contrast changes. I did not change the hue, because colour is important for telling the varieties apart.
+- The test set was only used twice: before and after training.
 
 ## Model
 
-- **Backbone:** ResNet-18 pretrained on ImageNet (`torchvision`).
-- **Head:** the original `fc` layer (512 → 1000) is replaced by a new `Linear(512 → 9)`.
-- **Fine-tuning:** all layers are trained, with two learning rates. The new head uses `1e-3` because it starts from random weights. The pretrained backbone uses `1e-4` because it only needs small adjustments.
-- **Checkpoint:** we keep the weights from the epoch with the best validation accuracy.
+ResNet-18 pretrained on ImageNet. I replaced the last layer (512 → 1000) with a new layer (512 → 9) and fine-tuned the whole network. The new layer uses a higher learning rate because it starts from random weights.
 
 | Setting | Value |
 |---|---|
-| Model | ResNet-18 (ImageNet weights) + new Linear(512 → 9) head |
+| Model | ResNet-18 (ImageNet weights) + new Linear(512 → 9) |
 | Parameters | 11.18 M |
 | Input size | 224×224 |
 | Batch size | 32 |
 | Epochs | 12 |
-| Learning rate | 0.0001 (backbone) / 0.001 (head) |
+| Learning rate | 0.0001 (backbone) / 0.001 (new layer) |
 | Optimizer | AdamW (weight decay 0.0001) + cosine schedule |
 | Loss | CrossEntropyLoss |
 | Weights kept | best validation epoch (11) |
@@ -92,9 +83,9 @@ The classes are a little unbalanced: Sokari has 264 images and Medjool has 135. 
 
 ![Loss and accuracy per epoch](figures/curves.png)
 
-The pretrained features make learning very fast. Validation accuracy is already 90.4 % after the first epoch and peaks at 96.0 % at epoch 11, the weights we keep. Training loss keeps falling (to 0.02). Validation loss moves up and down between 0.12 and 0.29 but reaches its lowest value (0.12) at that same epoch, so the gap stays small and the model is not seriously overfitting.
+Validation accuracy was already 90.4% after the first epoch and reached its best value (96.0%) at epoch 11. The training and validation curves stay close, so the model did not overfit much.
 
-### Before vs. after training (same test set, n = 249)
+### Before vs after training (same test set, 249 images)
 
 | Metric (test set) | Before training | After training | Change |
 |---|---|---|---|
@@ -106,9 +97,7 @@ The pretrained features make learning very fast. Validation accuracy is already 
 
 ![Before vs after](figures/before_after.png)
 
-Before training, the new 9-class head had random weights, so the model was close to guessing. It scored 12.9 % accuracy (chance is 11.1 %) and a loss of 2.36 (≈ ln 9 = 2.20), which also confirms that no test images leaked into training. After fine-tuning, the same 249 test images reach **96.8 % accuracy** and **0.968 macro F1**, and the loss drops to 0.106. Because ResNet-18 already knows edges, textures and shapes from ImageNet, it only had to learn the new head and adjust its layers slightly to separate the 9 varieties.
-
-### Confusion matrix and errors
+### Confusion matrix and per-class results
 
 ![Confusion matrix before and after training](figures/confusion_matrix.png)
 
@@ -124,19 +113,25 @@ Before training, the new 9-class head had random weights, so the model was close
 | Sokari | 0.975 | 1.000 | 0.987 | 39 |
 | Sugaey | 0.821 | 0.920 | 0.868 | 25 |
 
-Only **8 of 249** test images are wrong. The main confusion is **Meneifi predicted as Sugaey (4 times)**. Both are amber-brown, wrinkled dates of similar size and shape, so Meneifi has the lowest recall (0.857) and Sugaey has the lowest precision (0.821). Ajwa, Nabtat Ali and Shaishe are perfect (F1 = 1.000). Ajwa's almost-black colour makes it the easiest variety to recognise.
+Misclassified test images (8 of 249):
 
 ![Misclassified test images](figures/errors.png)
 
-Most mistakes have low confidence (55–77 %), so the model "knows" these images are hard. Only two mistakes have high confidence: Sugaey predicted as Sokari (99 %) and Meneifi predicted as Sugaey (91 %).
+### Results interpretation
 
-### What the model looks at (Grad-CAM)
+The results showed a big improvement after training the model. Before training, the accuracy was only 12.9%, which was close to random guessing. After fine-tuning ResNet-18, the accuracy increased to 96.8% on the test set. This means the model correctly classified 241 out of 249 test images.
+
+The model performed very well on most date varieties. Ajwa, Nabtat Ali, and Shaishe achieved perfect F1-scores. However, the model sometimes confused Meneifi with Sugaey because they have similar colours and shapes. This shows that some date varieties are harder to distinguish from images alone.
+
+Overall, the results show that transfer learning helped the model learn the differences between Saudi date varieties in a short training time.
+
+### Grad-CAM
 
 ![Grad-CAM heat-maps](figures/gradcam.png)
 
-Dark-pink areas are the pixels that pushed the model towards its answer. In almost every example, the strongest heat sits on the **fruit itself** (skin texture, wrinkles, colour) and not on the white background, so the model learned real date features instead of shortcuts.
+Grad-CAM shows which part of the image the model used for its prediction (dark pink = most important). In most examples the model focuses on the date itself, not the background.
 
-### Bonus: transfer learning vs. training from scratch
+### Extra: pretrained vs from scratch
 
 | Model | Pretrained | Parameters (M) | Epochs | Train time (min) | Test accuracy | Test F1 (macro) |
 |---|---|---|---|---|---|---|
@@ -145,45 +140,39 @@ Dark-pink areas are the pixels that pushed the model towards its answer. In almo
 
 ![Validation accuracy: fine-tuned vs from scratch](figures/transfer_vs_scratch.png)
 
-The small CNN trained from scratch reaches 82.7 % test accuracy after 20 epochs. The fine-tuned ResNet-18 reaches 96.8 % with fewer epochs and less time, **14.1 points better**. The from-scratch curve also jumps up and down a lot from epoch to epoch. With only 1,160 training images, pretrained ImageNet features make a big difference.
+The small CNN trained from scratch reached 82.7% test accuracy, compared to 96.8% for the pretrained ResNet-18.
 
-### Predictions on test images
+### Personal observation
 
-![Top-3 predictions on random test images](figures/predictions.png)
+One thing I noticed during this project is that Ajwa dates were easier for the model to recognize, possibly because of their very dark colour. I also noticed that Meneifi and Sugaey were more difficult to distinguish because they share similar colours and shapes. This helped me understand why some varieties were confused by the model.
 
 ### Limitations and next steps
 
-- All photos come from one controlled setup, so real-world phone photos (different light and background) will probably score lower. Next step: test on our own photos from the market. The notebook has an upload cell for this.
-- Some photos may show the same fruit from different sides. If those land in different splits, the test score could be a little optimistic.
-- To fix the Meneifi / Sugaey confusion: collect more images of these two varieties, or train at a higher resolution so finer skin texture is visible.
-- Future work: add more popular Saudi varieties (Khalas, Barhi, Segae…), and export the model to a mobile app.
+- All images were taken in the same controlled setup, so the model may not work as well on normal phone photos.
+- Some images may show the same date from different sides, which could make the test score a bit optimistic.
+- Next steps: test on my own phone photos, collect more Meneifi and Sugaey images, and add more varieties like Khalas and Barhi.
 
 ## How to run
 
-1. Click **Open in Colab** above, or upload `project.ipynb` to [Google Colab](https://colab.research.google.com).
-2. Go to **Runtime → Change runtime type → T4 GPU**.
-3. Get a Kaggle API token: kaggle.com → *Settings* → *API* → **Create New Token**.
-4. In Colab, open **Secrets** (🔑 in the left sidebar). Add `KAGGLE_USERNAME` and `KAGGLE_KEY`, and switch on *Notebook access*. Never put the key in the notebook.
-5. Go to **Runtime → Run all**. The dataset downloads automatically with `kagglehub`, and the whole notebook runs in a few minutes.
-6. The notebook writes these outputs:
-   - `figures/`: all the plots used in this README
-   - `results/metrics.json`: every metric and the per-epoch history
-   - `results/README_results.md`: the tables used in this README
-   - `project_outputs.zip`: the figures and results, downloaded automatically
+1. Open `project.ipynb` in Google Colab (button above).
+2. Runtime → Change runtime type → T4 GPU.
+3. Get a Kaggle API token (kaggle.com → Settings → API → Create New Token).
+4. In Colab Secrets (key icon on the left), add `KAGGLE_USERNAME` and `KAGGLE_KEY` and turn on notebook access.
+5. Runtime → Run all. The dataset is downloaded automatically with `kagglehub`.
 
-The dataset is **not** stored in this repo. It is downloaded at run time.
+The notebook saves the plots in `figures/` and the metrics in `results/`. The dataset is not included in this repo.
 
 ## Repository structure
 
 ```
 ├── README.md
-├── project.ipynb      # full pipeline, saved with outputs
-├── figures/           # plots produced by the notebook
-├── results/           # metrics.json + README_results.md produced by the notebook
-└── .gitignore         # keeps the dataset and model weights out of git
+├── project.ipynb      # notebook with outputs
+├── figures/           # plots from the notebook
+├── results/           # metrics.json + README_results.md
+└── .gitignore
 ```
 
 ## Acknowledgements
 
-- Dataset: W. Alhamdan and J. M. Howe, *Classification of date fruits in a controlled environment using Convolutional Neural Networks* (2021).
-- Course: *Computer Vision for Developers*, Musa Ibn Rashid, SDAIA Academy.
+- Dataset: W. Alhamdan and J. M. Howe, Classification of date fruits in a controlled environment using Convolutional Neural Networks (2021).
+- Course: Computer Vision for Developers, Musa Ibn Rashid, SDAIA Academy.
