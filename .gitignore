@@ -1,0 +1,13 @@
+# Dataset and generated data (never commit the dataset)
+data_clean/
+data/
+*.zip
+
+# Model weights
+*.pt
+*.pth
+
+# Python / Jupyter
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
